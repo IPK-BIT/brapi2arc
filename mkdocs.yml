@@ -1,0 +1,26 @@
+site_name: BrAPI2ARC
+repo_url: https://github.com/IPK-BIT/brapi2arc.git
+repo_name: brapi2arc
+nav:
+  - Home: index.md
+  - Getting started: 
+    - Overview: getting_started.md
+    - Simple example: simple_example.md
+    - Best practices: best_practices.md
+theme:
+  name: material
+  logo: assets/brapi2arc.png
+  favicon: assets/brapi2arc.png
+  palette:
+    primary: green
+    accent: lime
+  features:
+    - navigation.sections
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences

@@ -1,0 +1,7 @@
+litestar
+uvicorn
+python-dotenv
+pydantic
+requests
+arctrl==2.0.0a2
+fsspreadsheet==6.1.1
