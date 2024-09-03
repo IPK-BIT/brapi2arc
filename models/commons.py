@@ -87,6 +87,7 @@ class Update(BaseModel):
 
 
 class ObservationLevel(BaseModel):
+    levelCode: str | None = None
     levelName: str | None = None
     levelOrder: int | None = None
 

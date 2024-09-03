@@ -6,7 +6,7 @@ import json
 from utils import arc
 
 from models.response import Response, Message, Metadata, Pagination, MESSAGETYPE, Result
-from models.phenotyping import ObservationUnit, Position
+from models.phenotyping import ObservationUnit, Position, ObservationLevel
 
 
 class ObservationUnitController(Controller):
@@ -56,16 +56,20 @@ class ObservationUnitController(Controller):
                                     observationUnitPosition=Position(
                                         entryType=None,
                                         geoCoordinates=None,
-                                        observationLevel=None,
+                                        observationLevel=ObservationLevel(
+                                            levelName='rep',
+                                            levelCode=next(
+                                            (prop['value'] for prop in output['additionalProperties'] if prop['category'] == 'REPLICATE'), None)
+                                        ),
                                         observationLevelRelationships=None,
                                         positionCoordinateX=next(
                                             (prop['value'] for prop in output['additionalProperties'] if prop['category'] == 'GRID COLUMN'), None),
                                         positionCoordinateXType=next(
-                                            (prop['category'] for prop in output['additionalProperties'] if prop['category'] == 'GRID COLUMN'), None),
+                                            ('GRID_COL' for prop in output['additionalProperties'] if prop['category'] == 'GRID COLUMN'), None),
                                         positionCoordinateY=next(
                                             (prop['value'] for prop in output['additionalProperties'] if prop['category'] == 'GRID ROW'), None),
                                         positionCoordinateYType=next(
-                                            (prop['category'] for prop in output['additionalProperties'] if prop['category'] == 'GRID ROW'), None),
+                                            ('GRID_ROW' for prop in output['additionalProperties'] if prop['category'] == 'GRID ROW'), None),
                                     ),
                                     germplasmDbId=process['inputs'][i]['name'],
                                     germplasmName=process['inputs'][i]['name'],
@@ -101,6 +105,7 @@ class ObservationUnitController(Controller):
     @post('/')
     async def post_observation_units(self, data: list[ObservationUnit]) -> Response[ObservationUnit]:
         ic(data)
+        data=[]
         return Response(
             metadata=Metadata(
                 pagination=Pagination(

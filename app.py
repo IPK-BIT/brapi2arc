@@ -213,7 +213,7 @@ async def root() -> None:
     return Redirect('/schema')
 
 cors_config = CORSConfig(
-    allow_origins=['143.234.109.30', 'localhost'],
+    allow_origins=['*'],
     allow_methods=['GET', 'POST', 'OPTIONS'],
     allow_credentials=True
 )

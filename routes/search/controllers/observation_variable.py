@@ -50,6 +50,7 @@ class ObservationVariableSearchController(Controller):
                             description=row[1]['Method Description']
                         ),
                         scale=Scale(
+                            dataType=row[1]['Scale Type'],
                             scaleDbId=row[1]['Scale'],
                             scaleName=row[1]['Scale'],
                             scalePUI= None if pd.isna(row[1]['Scale Accession Number']) else row[1]['Scale Accession Number'],

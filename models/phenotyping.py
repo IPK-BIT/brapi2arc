@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from models.commons import ExternalReference, OntologyReference, ScaleValues, Season, Position, Treatment, ScaleValue, Coordinate
+from models.commons import ExternalReference, OntologyReference, ScaleValues, Season, Position, Treatment, ScaleValue, Coordinate, ObservationLevel
 
 
 class Method(BaseModel):

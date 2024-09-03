@@ -30,6 +30,7 @@ class ObservationController(Controller):
                                observation.observationTimeStamp, observation.observationVariableDbId, observation.value]
 
         grouped_df = df.groupby('Study')
+        written_observations = []
         actions = []
         for studyDbId, group in grouped_df:
             for assay in arc_obj.ISA.Assays:
@@ -50,10 +51,13 @@ class ObservationController(Controller):
                         phenotyping.AddColumn(
                             CompositeHeader.output(IOType.raw_data_file()))
 
-                    written_observations = []
-                    for _, observation in group.iterrows():
+                    # TODO: This is naive code.
+                    observation_units = group['Assay Name'].unique()
+                    already_added_units = [str(cell) for cell in phenotyping.GetColumn(0).Cells]
+                    observation_units = [observation_unit for observation_unit in observation_units if observation_unit not in already_added_units]
+                    for observation_unit in observation_units:
                         phenotyping.AddRow([
-                            CompositeCell.free_text(observation['Assay Name']),
+                            CompositeCell.free_text(observation_unit),
                             CompositeCell.free_text('Phenotyping'),
                             CompositeCell.empty_term(),
                             CompositeCell.empty_free_text(),
@@ -62,24 +66,29 @@ class ObservationController(Controller):
                             CompositeCell.free_text(
                                 f'assays/{studyDbId}/datasets/phenotyping.csv')
                         ])
-                        obs_to_add = [
-                            observation
-                            for _, row in group.iterrows()
-                            for observation in data
-                            if (
-                                observation.observationUnitDbId == row['Assay Name'] and
-                                observation.observationTimeStamp == row['Date'] and
-                                observation.observationVariableDbId == row['Trait'] and
-                                observation.value == row['Value']
-                            )
-                        ]
-                        written_observations.extend(obs_to_add)
+
+                    obs_to_add = [
+                        observation
+                        for _, row in group.iterrows()
+                        for observation in data
+                        if (
+                            observation.observationUnitDbId == row['Assay Name'] and
+                            observation.observationTimeStamp == row['Date'] and
+                            observation.observationVariableDbId == row['Trait'] and
+                            observation.value == row['Value']
+                        )
+                    ]
+                    written_observations.extend(obs_to_add)
 
                     group = group.drop(columns=['Study'])
                     if not os.path.exists(f'data/assays/{studyDbId}/datasets'):
                         os.makedirs(f'data/assays/{studyDbId}/datasets')
-                    group.to_csv(
-                        f'data/assays/{studyDbId}/datasets/phenotyping.csv', index=False)
+                    if not os.path.exists(f'data/assays/{studyDbId}/datasets/phenotyping.csv'):
+                        group.to_csv(
+                            f'data/assays/{studyDbId}/datasets/phenotyping.csv', index=False)
+                    else:
+                        group.to_csv(
+                            f'data/assays/{studyDbId}/datasets/phenotyping.csv', mode='a', header=False, index=False)
 
                     try:
                         assay.UpdateTable('Phenotyping', phenotyping)
@@ -88,35 +97,38 @@ class ObservationController(Controller):
                     spreadsheet = XlsxController().Assay().to_fs_workbook(assay)
                     Xlsx.to_xlsx_file(
                         f'data/assays/{studyDbId}/isa.assay.xlsx', spreadsheet)
-                actions.append(
-                    {
-                        'action': 'create',
-                        'file_path': f'assays/{studyDbId}/datasets/phenotyping.csv',
-                        'encoding': 'base64',
-                        'content': base64.b64encode(open(f'data/assays/{studyDbId}/datasets/phenotyping.csv', 'rb').read()).decode('utf-8')
-                    }
-                )
-                actions.append(
-                    {
-                        'action': 'update',
-                        'file_path': f'assays/{studyDbId}/isa.assay.xlsx',
-                        'encoding': 'base64',
-                        'content': base64.b64encode(open(f'data/assays/{studyDbId}/isa.assay.xlsx', 'rb').read()).decode('utf-8')
-                    }
-                )
-        response = requests.post(f'{os.getenv("DATAHUB_URL")}api/v4/projects/{os.getenv("ARC_URI").replace("/","%2F")}/repository/commits', headers={
-            'PRIVATE-TOKEN': token
-        }, json={
+                    actions.append(
+                        {
+                            'action': 'create',
+                            'file_path': f'assays/{studyDbId}/datasets/phenotyping.csv',
+                            'encoding': 'base64',
+                            'content': base64.b64encode(open(f'data/assays/{studyDbId}/datasets/phenotyping.csv', 'rb').read()).decode('utf-8')
+                        }
+                    )
+                    actions.append(
+                        {
+                            'action': 'update',
+                            'file_path': f'assays/{studyDbId}/isa.assay.xlsx',
+                            'encoding': 'base64',
+                            'content': base64.b64encode(open(f'data/assays/{studyDbId}/isa.assay.xlsx', 'rb').read()).decode('utf-8')
+                        }
+                    )
+        json = {
             'branch': 'main',
             'commit_message': f'[brapi2arc] Add phenotyping data - {datetime.datetime.now()}',
             'actions': actions
-        })
+        }
+        response = requests.post(f'{os.getenv("DATAHUB_URL")}api/v4/projects/{os.getenv("ARC_URI").replace("/","%2F")}/repository/commits', headers={
+            'PRIVATE-TOKEN': token
+        }, json=json)
         response.raise_for_status()
-        # FIXME: This is a workaround. The ARC should either be downloaded through the API (but authentication is required)
-        # or the ARC needs to be updated using the PRIVATE-TOKEN through python-git.
-        repo = git.Repo('data')
-        repo.git.reset('--hard', 'origin/main')
-        repo.remote('origin').pull()
+        # FIXME: This is a workaround. 
+        for root, dirs, files in os.walk('data', topdown=False):
+            for name in files:
+                os.remove(os.path.join(root, name))
+            for name in dirs:
+                os.rmdir(os.path.join(root, name))
+        git.Repo.clone_from(f"{os.getenv('DATAHUB_URL')}{os.getenv('ARC_URI')}", 'data')
 
         return Response(
             metadata=Metadata(
