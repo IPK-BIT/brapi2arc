@@ -123,6 +123,7 @@ class ObservationController(Controller):
         }, json=json)
         response.raise_for_status()
         # FIXME: This is a workaround. 
+        # TODO: Race condition? What happens if multiple requests are made at the same time?
         for root, dirs, files in os.walk('data', topdown=False):
             for name in files:
                 os.remove(os.path.join(root, name))

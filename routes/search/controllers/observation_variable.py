@@ -16,7 +16,7 @@ class ObservationVariableSearchController(Controller):
 
     @dataclass
     class ObservationVariableSearch:
-        observationVariableName: list[str]
+        observationVariableNames: list[str]
 
     @post('/')
     async def search_observation_variables(self, state: State, data: ObservationVariableSearch) -> Response[ObservationVariable]:
@@ -29,7 +29,7 @@ class ObservationVariableSearchController(Controller):
                 'data/studies', study['identifier'], 'tdf.tsv'), sep='\t')
             filtered_variables = []
             for row in tdf.iterrows():
-                if row[1]['Variable Name'] in data.observationVariableName:
+                if row[1]['Variable Name'] in data.observationVariableNames:
                     validValues = None
                     if row[1]['Scale Type'] in ['Nominal', 'Ordinal']:
                         validValues = ScaleValues(

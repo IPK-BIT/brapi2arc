@@ -14,7 +14,7 @@ class GermplasmSearchController(Controller):
 
     @dataclass
     class GermplasmSearch:
-        germplasmName: list[str]
+        germplasmNames: list[str]
 
     @post('/')
     async def search_germplasm(self, state: State, data: GermplasmSearch) -> Response[Germplasm]:
@@ -27,7 +27,7 @@ class GermplasmSearchController(Controller):
             for process in study['processSequence']:
                 if process['executesProtocol']['name'] == 'Growth':
                     for input in process['inputs']:
-                        if input['name'] in data.germplasmName:
+                        if input['name'] in data.germplasmNames:
                             germplasm = Germplasm(
                                 germplasmDbId=input['name'],
                                 germplasmName=input['name'],
