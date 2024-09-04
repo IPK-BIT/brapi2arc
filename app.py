@@ -24,12 +24,14 @@ from utils import arc
 # TODO: How would the ARC be stored?
 # TODO: How to handle study/trial unspecific requests?
 
+
 def init_app():
     load_dotenv()
     app.state.pat = os.getenv('DATAHUB_PAT')
-    
+
     if not os.path.exists('data'):
-        git.Repo.clone_from(f"{os.getenv('DATAHUB_URL')}{os.getenv('ARC_URI')}", 'data')
+        git.Repo.clone_from(
+            f"{os.getenv('DATAHUB_URL')}{os.getenv('ARC_URI')}", 'data')
 
     metadata_path = 'data/metadata.json'
     if os.path.exists(metadata_path):
@@ -45,158 +47,159 @@ def init_app():
             file.write(rocrate_json)
         app.state.rocrate = rocrate_json
 
+
 @get('/brapi/v2/serverinfo', include_in_schema=False)
 async def server_info() -> dict:
     return {
         "metadata": {
             "datafiles": [],
             "pagination": {
-            "currentPage": 0,
-            "pageSize": 1000,
-            "totalCount": 10,
-            "totalPages": 1
+                "currentPage": 0,
+                "pageSize": 1000,
+                "totalCount": 10,
+                "totalPages": 1
             },
             "status": [
-            {
-                "message": "Request accepted, response successful",
-                "messageType": "INFO"
-            }
+                {
+                    "message": "Request accepted, response successful",
+                    "messageType": "INFO"
+                }
             ]
         },
         "result": {
             "calls": [
-            {
-                "contentTypes": [
-                    "application/json"
-                ],
-                "methods": [
-                    "GET"
-                ],
-                "service": "trials",
-                "versions": [
-                    "2.1"
-                ]
-            },
-            {
-                "contentTypes": [
-                    "application/json"
-                ],
-                "methods": [
-                    "GET"
-                ],
-                "service": "programs",
-                "versions": [
-                    "2.1"
-                ]
-            },
-            {
-                "contentTypes": [
-                    "application/json"
-                ],
-                "methods": [
-                    "GET"
-                ],
-                "service": "studies",
-                "versions": [
-                    "2.1"
-                ]
-            },
-            {
-                "contentTypes": [
-                    "application/json"
-                ],
-                "methods": [
-                    "GET"
-                ],
-                "service": "studytypes",
-                "versions": [
-                    "2.1"
-                ]
-            },
-            {
-                "contentTypes": [
-                    "application/json"
-                ],
-                "methods": [
-                    "POST"
-                ],
-                "service": "search/germplasm",
-                "versions": [
-                    "2.1"
-                ]
-            },
-            {
-                "contentTypes": [
-                    "application/json"
-                ],
-                "methods": [
-                    "GET"
-                ],
-                "service": "germplasm",
-                "versions": [
-                    "2.1"
-                ]
-            },
-            {
-                "contentTypes": [
-                    "application/json"
-                ],
-                "methods": [
-                    "POST"
-                ],
-                "service": "search/variables",
-                "versions": [
-                    "2.1"
-                ]
-            },
-            {
-                "contentTypes": [
-                    "application/json"
-                ],
-                "methods": [
-                    "GET"
-                ],
-                "service": "observationunits",
-                "versions": [
-                    "2.1"
-                ]
-            },
-            {
-                "contentTypes": [
-                    "application/json"
-                ],
-                "methods": [
-                    "POST"
-                ],
-                "service": "observationunits",
-                "versions": [
-                    "2.1"
-                ]
-            },
-            {
-                "contentTypes": [
-                    "application/json"
-                ],
-                "methods": [
-                    "POST"
-                ],
-                "service": "observations",
-                "versions": [
-                    "2.1"
-                ]
-            },
-            {
-                "contentTypes": [
-                    "application/json"
-                ],
-                "methods": [
-                    "GET"
-                ],
-                "service": "variables",
-                "versions": [
-                    "2.1"
-                ]
-            }
+                {
+                    "contentTypes": [
+                        "application/json"
+                    ],
+                    "methods": [
+                        "GET"
+                    ],
+                    "service": "trials",
+                    "versions": [
+                        "2.1"
+                    ]
+                },
+                {
+                    "contentTypes": [
+                        "application/json"
+                    ],
+                    "methods": [
+                        "GET"
+                    ],
+                    "service": "programs",
+                    "versions": [
+                        "2.1"
+                    ]
+                },
+                {
+                    "contentTypes": [
+                        "application/json"
+                    ],
+                    "methods": [
+                        "GET"
+                    ],
+                    "service": "studies",
+                    "versions": [
+                        "2.1"
+                    ]
+                },
+                {
+                    "contentTypes": [
+                        "application/json"
+                    ],
+                    "methods": [
+                        "GET"
+                    ],
+                    "service": "studytypes",
+                    "versions": [
+                        "2.1"
+                    ]
+                },
+                {
+                    "contentTypes": [
+                        "application/json"
+                    ],
+                    "methods": [
+                        "POST"
+                    ],
+                    "service": "search/germplasm",
+                    "versions": [
+                        "2.1"
+                    ]
+                },
+                {
+                    "contentTypes": [
+                        "application/json"
+                    ],
+                    "methods": [
+                        "GET"
+                    ],
+                    "service": "germplasm",
+                    "versions": [
+                        "2.1"
+                    ]
+                },
+                {
+                    "contentTypes": [
+                        "application/json"
+                    ],
+                    "methods": [
+                        "POST"
+                    ],
+                    "service": "search/variables",
+                    "versions": [
+                        "2.1"
+                    ]
+                },
+                {
+                    "contentTypes": [
+                        "application/json"
+                    ],
+                    "methods": [
+                        "GET"
+                    ],
+                    "service": "observationunits",
+                    "versions": [
+                        "2.1"
+                    ]
+                },
+                {
+                    "contentTypes": [
+                        "application/json"
+                    ],
+                    "methods": [
+                        "POST"
+                    ],
+                    "service": "observationunits",
+                    "versions": [
+                        "2.1"
+                    ]
+                },
+                {
+                    "contentTypes": [
+                        "application/json"
+                    ],
+                    "methods": [
+                        "POST"
+                    ],
+                    "service": "observations",
+                    "versions": [
+                        "2.1"
+                    ]
+                },
+                {
+                    "contentTypes": [
+                        "application/json"
+                    ],
+                    "methods": [
+                        "GET"
+                    ],
+                    "service": "variables",
+                    "versions": [
+                        "2.1"
+                    ]
+                }
             ],
             "contactEmail": "feser@ipk-gatersleben.de",
             "documentationURL": "",
@@ -206,7 +209,8 @@ async def server_info() -> dict:
             "serverDescription": "Brapi2ARC Test Server",
             "serverName": "The BrAPI 2 ARC Test Server"
         }
-        }
+    }
+
 
 @get('/', include_in_schema=False)
 async def root() -> None:

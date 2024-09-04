@@ -51,7 +51,7 @@ class ObservationUnitController(Controller):
                         data=[]
                     )
                 )
-        else: 
+        else:
             studies = arc_obj.ISA.Studies
         for study in studies:
             for process in json.loads(JsonController.Study().to_rocrate_json_string(study))['processSequence']:
@@ -70,7 +70,7 @@ class ObservationUnitController(Controller):
                                         observationLevel=ObservationLevel(
                                             levelName='rep',
                                             levelCode=next(
-                                            (prop['value'] for prop in output['additionalProperties'] if prop['category'] == 'REPLICATE'), None)
+                                                (prop['value'] for prop in output['additionalProperties'] if prop['category'] == 'REPLICATE'), None)
                                         ),
                                         observationLevelRelationships=None,
                                         positionCoordinateX=next(
@@ -112,8 +112,7 @@ class ObservationUnitController(Controller):
                 data=observation_units
             )
         )
-    
-    #TODO: Only commit if there are changes
+
     @post('/')
     async def post_observation_units(self, state: State, headers: dict, data: list[ObservationUnit]) -> Response[ObservationUnit]:
         token = headers.get('authorization').split(' ')[1]
@@ -139,7 +138,7 @@ class ObservationUnitController(Controller):
             new_growth = ArcTable.init('Growth')
             for header in growth_header:
                 new_growth.AddColumn(header)
-            
+
             column_index = {}
             for i in range(0, len(growth_header)):
                 column_index[str(growth_header[i])] = i
@@ -155,23 +154,29 @@ class ObservationUnitController(Controller):
                         observationUnitDbId = f'{germplasmDbId}-{pos.positionCoordinateX}-{pos.positionCoordinateY}'
                     else:
                         observationUnitDbId = f'{germplasmDbId}-{uuid1()}'
-                    new_growth.UpdateCellAt(column_index['Output [Sample Name]'], i, CompositeCell.free_text(observationUnitDbId))
+                    new_growth.UpdateCellAt(
+                        column_index['Output [Sample Name]'], i, CompositeCell.free_text(observationUnitDbId))
                     if pos.entryType:
-                        new_growth.UpdateCellAt(column_index['Factor [ENTRY TYPE]'], i, CompositeCell.term(OntologyAnnotation(pos.entryType,'',''))) 
+                        new_growth.UpdateCellAt(column_index['Factor [ENTRY TYPE]'], i, CompositeCell.term(
+                            OntologyAnnotation(pos.entryType, '', '')))
                     if pos.positionCoordinateX:
-                        new_growth.UpdateCellAt(column_index['Factor [GRID COLUMN]'], i, CompositeCell.term(OntologyAnnotation(pos.positionCoordinateX,'','')))
+                        new_growth.UpdateCellAt(column_index['Factor [GRID COLUMN]'], i, CompositeCell.term(
+                            OntologyAnnotation(pos.positionCoordinateX, '', '')))
                     if pos.positionCoordinateY:
-                        new_growth.UpdateCellAt(column_index['Factor [GRID ROW]'], i, CompositeCell.term(OntologyAnnotation(pos.positionCoordinateY,'','')))
+                        new_growth.UpdateCellAt(column_index['Factor [GRID ROW]'], i, CompositeCell.term(
+                            OntologyAnnotation(pos.positionCoordinateY, '', '')))
                     if pos.observationLevel:
-                        new_growth.UpdateCellAt(column_index['Factor [REPLICATE]'], i, CompositeCell.term(OntologyAnnotation(pos.observationLevel.levelCode,'','')))
-                    ou=ObservationUnit(**germplasm_row.to_dict())
+                        new_growth.UpdateCellAt(column_index['Factor [REPLICATE]'], i, CompositeCell.term(
+                            OntologyAnnotation(pos.observationLevel.levelCode, '', '')))
+                    ou = ObservationUnit(**germplasm_row.to_dict())
                     ou.observations = None
                     ou.observationUnitDbId = observationUnitDbId
                     ou.observationUnitName = observationUnitDbId
                     written_observation_units.append(ou)
                     changes = True
             if changes:
-                included_germplasms = set(new_growth.GetColumn(0).Cells[i].AsFreeText for i in range(new_growth.RowCount))
+                included_germplasms = set(new_growth.GetColumn(
+                    0).Cells[i].AsFreeText for i in range(new_growth.RowCount))
                 for key, i in germplasm_index.items():
                     if key not in included_germplasms:
                         new_growth.AddRow(growth.GetRow(i))
@@ -180,7 +185,7 @@ class ObservationUnitController(Controller):
                 spreadsheet = XlsxController().Study().to_fs_workbook(study)
                 Xlsx().to_xlsx_file(
                     f'data/studies/{studyDbId}/isa.study.xlsx', spreadsheet)
-            
+
                 actions.append(
                     {
                         'action': 'update',
@@ -189,10 +194,10 @@ class ObservationUnitController(Controller):
                         'content': base64.b64encode(open(f'data/studies/{studyDbId}/isa.study.xlsx', 'rb').read()).decode('utf-8')
                     }
                 )
-        if len(actions)>0:
+        if len(actions) > 0:
             arc_obj = arc.read('data/')
             arc_rocrate = JsonController().ARC().to_rocrate_json_string()(arc_obj)
-        
+
             actions.append({
                 'action': 'update',
                 'file_path': 'metadata.json',
@@ -214,7 +219,8 @@ class ObservationUnitController(Controller):
                     os.remove(os.path.join(root, name))
                 for name in dirs:
                     os.rmdir(os.path.join(root, name))
-            git.Repo.clone_from(f"{os.getenv('DATAHUB_URL')}{os.getenv('ARC_URI')}", 'data')
+            git.Repo.clone_from(
+                f"{os.getenv('DATAHUB_URL')}{os.getenv('ARC_URI')}", 'data')
             metadata_path = 'data/metadata.json'
             if os.path.exists(metadata_path):
                 with open(metadata_path, 'r') as file:

@@ -54,8 +54,10 @@ class ObservationController(Controller):
 
                     # TODO: This is naive code.
                     observation_units = group['Assay Name'].unique()
-                    already_added_units = [str(cell) for cell in phenotyping.GetColumn(0).Cells]
-                    observation_units = [observation_unit for observation_unit in observation_units if observation_unit not in already_added_units]
+                    already_added_units = [
+                        str(cell) for cell in phenotyping.GetColumn(0).Cells]
+                    observation_units = [
+                        observation_unit for observation_unit in observation_units if observation_unit not in already_added_units]
                     for observation_unit in observation_units:
                         phenotyping.AddRow([
                             CompositeCell.free_text(observation_unit),
@@ -123,16 +125,17 @@ class ObservationController(Controller):
             'PRIVATE-TOKEN': token
         }, json=json)
         response.raise_for_status()
-        # FIXME: This is a workaround. 
+        # FIXME: This is a workaround.
         # TODO: Race condition? What happens if multiple requests are made at the same time?
         for root, dirs, files in os.walk('data', topdown=False):
             for name in files:
                 os.remove(os.path.join(root, name))
             for name in dirs:
                 os.rmdir(os.path.join(root, name))
-        git.Repo.clone_from(f"{os.getenv('DATAHUB_URL')}{os.getenv('ARC_URI')}", 'data')
+        git.Repo.clone_from(
+            f"{os.getenv('DATAHUB_URL')}{os.getenv('ARC_URI')}", 'data')
 
-        #TODO: Push to repo?
+        # TODO: Push to repo?
         arc_obj = arc.read('data')
         state.rocrate = JsonController().ARC().to_rocrate_json_string()(arc_obj)
 
