@@ -13,6 +13,7 @@ import json
 import base64
 import requests
 import os
+import pandas as pd
 
 from models.response import Response, Message, Metadata, Pagination, MESSAGETYPE, Result
 from models.phenotyping import ObservationUnit, Position, ObservationLevel
@@ -112,62 +113,86 @@ class ObservationUnitController(Controller):
             )
         )
     
+    #TODO: Only commit if there are changes
     @post('/')
     async def post_observation_units(self, state: State, headers: dict, data: list[ObservationUnit]) -> Response[ObservationUnit]:
         token = headers.get('authorization').split(' ')[1]
         written_observation_units = []
 
-        arc_obj = arc.read('data/')
+        df = pd.DataFrame([ob.__dict__ for ob in data])
+
         actions = []
 
-        index_mapping = {}
-
-        for study in arc_obj.ISA.Studies:
+        arc_obj = arc.read('data/')
+        study_grouped_df = df.groupby('studyDbId')
+        for studyDbId, study_group in study_grouped_df:
+            changes = False
+            study = arc_obj.ISA.GetStudy(studyDbId)
+            germplasm_grouped_df = study_group.groupby('germplasmDbId')
+            germplasm_index = {}
             growth = study.GetTable('Growth')
-            index_mapping[study.Identifier] = {}
-            for i in range(0,growth.RowCount):
-                index_mapping[study.Identifier][growth.GetRow(i)[0].AsFreeText] = i
+            for i in range(0, growth.RowCount):
+                row = study.GetTable('Growth').GetRow(i)
+                germplasm_index[row[0].AsFreeText] = i
 
-        #TODO: Group by study and append isa.study only per study
-        for observation_unit in data:
-            study = arc_obj.ISA.GetStudy(observation_unit.studyDbId)
-            growth = study.GetTable('Growth')
+            growth_header = growth.Headers
+            new_growth = ArcTable.init('Growth')
+            for header in growth_header:
+                new_growth.AddColumn(header)
             
-            i=index_mapping[observation_unit.studyDbId][observation_unit.germplasmDbId]
-            row = growth.GetRow(i)
-            if row[-1].AsFreeText == '':
-                if row[0].AsFreeText == observation_unit.germplasmDbId:
-                    if observation_unit.observationUnitPosition.positionCoordinateX and observation_unit.observationUnitPosition.positionCoordinateY:
-                        observation_unit.observationUnitDbId = f'{observation_unit.germplasmDbId}-{observation_unit.observationUnitPosition.positionCoordinateX}-{observation_unit.observationUnitPosition.positionCoordinateY}'
+            column_index = {}
+            for i in range(0, len(growth_header)):
+                column_index[str(growth_header[i])] = i
+            for germplasmDbId, germplasm_group in germplasm_grouped_df:
+                for _, germplasm_row in germplasm_group.iterrows():
+                    row = growth.GetRow(germplasm_index[germplasmDbId])
+                    if row[-1].AsFreeText != '':
+                        continue
+                    new_growth.AddRow(row)
+                    pos: Position = germplasm_row['observationUnitPosition']
+                    i = new_growth.RowCount - 1
+                    if pos.positionCoordinateX and pos.positionCoordinateY:
+                        observationUnitDbId = f'{germplasmDbId}-{pos.positionCoordinateX}-{pos.positionCoordinateY}'
                     else:
-                        observation_unit.observationUnitDbId = f'{observation_unit.germplasmDbId}-{uuid1()}'
-                    growth.UpdateCellAt(9,i,CompositeCell.free_text(observation_unit.observationUnitDbId))
-                    if observation_unit.observationUnitPosition:
-                        if observation_unit.observationUnitPosition.entryType:
-                            growth.UpdateCellAt(8, i, CompositeCell.term(OntologyAnnotation(observation_unit.observationUnitPosition.entryType,'','')))
-                        if observation_unit.observationUnitPosition.positionCoordinateX:
-                            growth.UpdateCellAt(7, i, CompositeCell.term(OntologyAnnotation(observation_unit.observationUnitPosition.positionCoordinateX,'','')))
-                        if observation_unit.observationUnitPosition.positionCoordinateY:
-                            growth.UpdateCellAt(6, i, CompositeCell.term(OntologyAnnotation(observation_unit.observationUnitPosition.positionCoordinateY,'','')))
-                        if observation_unit.observationUnitPosition.observationLevel:
-                            growth.UpdateCellAt(5, i, CompositeCell.term(OntologyAnnotation(observation_unit.observationUnitPosition.observationLevel.levelCode,'','')))
-                    study.UpdateTable('Growth', growth)
-                    spreadsheet = XlsxController().Study().to_fs_workbook(study)
-                    Xlsx().to_xlsx_file(
-                        f'data/studies/{observation_unit.studyDbId}/isa.study.xlsx', spreadsheet)
-                    observation_unit.observations = None
-                    written_observation_units.append(observation_unit)
-        if len(written_observation_units)>0: 
-            arc_obj = arc.read('data/')
-            arc_rocrate = JsonController().ARC().to_rocrate_json_string()(arc_obj)
-            actions.append(
+                        observationUnitDbId = f'{germplasmDbId}-{uuid1()}'
+                    new_growth.UpdateCellAt(column_index['Output [Sample Name]'], i, CompositeCell.free_text(observationUnitDbId))
+                    if pos.entryType:
+                        new_growth.UpdateCellAt(column_index['Factor [ENTRY TYPE]'], i, CompositeCell.term(OntologyAnnotation(pos.entryType,'',''))) 
+                    if pos.positionCoordinateX:
+                        new_growth.UpdateCellAt(column_index['Factor [GRID COLUMN]'], i, CompositeCell.term(OntologyAnnotation(pos.positionCoordinateX,'','')))
+                    if pos.positionCoordinateY:
+                        new_growth.UpdateCellAt(column_index['Factor [GRID ROW]'], i, CompositeCell.term(OntologyAnnotation(pos.positionCoordinateY,'','')))
+                    if pos.observationLevel:
+                        new_growth.UpdateCellAt(column_index['Factor [REPLICATE]'], i, CompositeCell.term(OntologyAnnotation(pos.observationLevel.levelCode,'','')))
+                    ou=ObservationUnit(**germplasm_row.to_dict())
+                    ou.observations = None
+                    ou.observationUnitDbId = observationUnitDbId
+                    ou.observationUnitName = observationUnitDbId
+                    written_observation_units.append(ou)
+                    changes = True
+            if changes:
+                included_germplasms = set(new_growth.GetColumn(0).Cells[i].AsFreeText for i in range(new_growth.RowCount))
+                for key, i in germplasm_index.items():
+                    if key not in included_germplasms:
+                        new_growth.AddRow(growth.GetRow(i))
+
+                study.UpdateTable('Growth', new_growth)
+                spreadsheet = XlsxController().Study().to_fs_workbook(study)
+                Xlsx().to_xlsx_file(
+                    f'data/studies/{studyDbId}/isa.study.xlsx', spreadsheet)
+            
+                actions.append(
                     {
                         'action': 'update',
-                        'file_path': f'studies/{observation_unit.studyDbId}/isa.study.xlsx',
+                        'file_path': f'studies/{studyDbId}/isa.study.xlsx',
                         'encoding': 'base64',
-                        'content': base64.b64encode(open(f'data/studies/{observation_unit.studyDbId}/isa.study.xlsx', 'rb').read()).decode('utf-8')
+                        'content': base64.b64encode(open(f'data/studies/{studyDbId}/isa.study.xlsx', 'rb').read()).decode('utf-8')
                     }
                 )
+        if len(actions)>0:
+            arc_obj = arc.read('data/')
+            arc_rocrate = JsonController().ARC().to_rocrate_json_string()(arc_obj)
+        
             actions.append({
                 'action': 'update',
                 'file_path': 'metadata.json',
@@ -183,7 +208,7 @@ class ObservationUnitController(Controller):
                 'PRIVATE-TOKEN': token
             }, json=json_payload)
             response.raise_for_status()
-            
+
             for root, dirs, files in os.walk('data', topdown=False):
                 for name in files:
                     os.remove(os.path.join(root, name))
@@ -194,6 +219,91 @@ class ObservationUnitController(Controller):
             if os.path.exists(metadata_path):
                 with open(metadata_path, 'r') as file:
                     state.rocrate = file.read()
+            
+
+        # arc_obj = arc.read('data/')
+        # actions = []
+
+        # index_mapping = {}
+
+        # for study in arc_obj.ISA.Studies:
+        #     growth = study.GetTable('Growth')
+        #     index_mapping[study.Identifier] = {}
+        #     for i in range(0,growth.RowCount):
+        #         index_mapping[study.Identifier][growth.GetRow(i)[0].AsFreeText] = i
+
+        # #TODO: Group by study and append isa.study only per study
+        # for observation_unit in data:
+        #     study = arc_obj.ISA.GetStudy(observation_unit.studyDbId)
+        #     growth = study.GetTable('Growth')
+            
+        #     i=index_mapping[observation_unit.studyDbId][observation_unit.germplasmDbId]
+        #     row = growth.GetRow(i)
+        #     #TODO: Handle case where germplasm has multiple observation units
+        #     if row[-1].AsFreeText == '':
+        #         if row[0].AsFreeText == observation_unit.germplasmDbId:
+        #             if observation_unit.observationUnitPosition.positionCoordinateX and observation_unit.observationUnitPosition.positionCoordinateY:
+        #                 observation_unit.observationUnitDbId = f'{observation_unit.germplasmDbId}-{observation_unit.observationUnitPosition.positionCoordinateX}-{observation_unit.observationUnitPosition.positionCoordinateY}'
+        #             else:
+        #                 observation_unit.observationUnitDbId = f'{observation_unit.germplasmDbId}-{uuid1()}'
+        #             growth.UpdateCellAt(9,i,CompositeCell.free_text(observation_unit.observationUnitDbId))
+        #             if observation_unit.observationUnitPosition:
+        #                 #TODO: Dynamically get the index of the factor columns
+        #                 if observation_unit.observationUnitPosition.entryType:
+        #                     growth.UpdateCellAt(8, i, CompositeCell.term(OntologyAnnotation(observation_unit.observationUnitPosition.entryType,'','')))
+        #                 if observation_unit.observationUnitPosition.positionCoordinateX:
+        #                     growth.UpdateCellAt(7, i, CompositeCell.term(OntologyAnnotation(observation_unit.observationUnitPosition.positionCoordinateX,'','')))
+        #                 if observation_unit.observationUnitPosition.positionCoordinateY:
+        #                     growth.UpdateCellAt(6, i, CompositeCell.term(OntologyAnnotation(observation_unit.observationUnitPosition.positionCoordinateY,'','')))
+        #                 if observation_unit.observationUnitPosition.observationLevel:
+        #                     growth.UpdateCellAt(5, i, CompositeCell.term(OntologyAnnotation(observation_unit.observationUnitPosition.observationLevel.levelCode,'','')))
+        #             study.UpdateTable('Growth', growth)
+        #             spreadsheet = XlsxController().Study().to_fs_workbook(study)
+        #             Xlsx().to_xlsx_file(
+        #                 f'data/studies/{observation_unit.studyDbId}/isa.study.xlsx', spreadsheet)
+        #             observation_unit.observations = None
+        #             written_observation_units.append(observation_unit)
+        #     else:
+        #         if row[0].AsFreeText == observation_unit.germplasmDbId and row[7].AsFreeText == observation_unit.observationUnitPosition.positionCoordinateX and row[6].AsFreeText == observation_unit.observationUnitPosition.positionCoordinateY:
+        #             ic()
+
+        # if len(written_observation_units)>0: 
+        #     arc_obj = arc.read('data/')
+        #     arc_rocrate = JsonController().ARC().to_rocrate_json_string()(arc_obj)
+        #     actions.append(
+        #             {
+        #                 'action': 'update',
+        #                 'file_path': f'studies/{observation_unit.studyDbId}/isa.study.xlsx',
+        #                 'encoding': 'base64',
+        #                 'content': base64.b64encode(open(f'data/studies/{observation_unit.studyDbId}/isa.study.xlsx', 'rb').read()).decode('utf-8')
+        #             }
+        #         )
+        #     actions.append({
+        #         'action': 'update',
+        #         'file_path': 'metadata.json',
+        #         'encoding': 'text',
+        #         'content': arc_rocrate
+        #     })
+        #     json_payload = {
+        #         'branch': 'main',
+        #         'commit_message': f'[brapi2arc] Add observation units - {datetime.datetime.now()}',
+        #         'actions': actions
+        #     }
+        #     response = requests.post(f'{os.getenv("DATAHUB_URL")}api/v4/projects/{os.getenv("ARC_URI").replace("/","%2F")}/repository/commits', headers={
+        #         'PRIVATE-TOKEN': token
+        #     }, json=json_payload)
+        #     response.raise_for_status()
+            
+        #     for root, dirs, files in os.walk('data', topdown=False):
+        #         for name in files:
+        #             os.remove(os.path.join(root, name))
+        #         for name in dirs:
+        #             os.rmdir(os.path.join(root, name))
+        #     git.Repo.clone_from(f"{os.getenv('DATAHUB_URL')}{os.getenv('ARC_URI')}", 'data')
+        #     metadata_path = 'data/metadata.json'
+        #     if os.path.exists(metadata_path):
+        #         with open(metadata_path, 'r') as file:
+        #             state.rocrate = file.read()
 
         return Response(
             metadata=Metadata(
