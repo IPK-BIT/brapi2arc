@@ -74,7 +74,7 @@ If you encounter any issues:
 - Ensure that your GitLab instance URL and repository name are correct.
 - Review the logs for any error messages:
     ```
-    docker logs arc-tool
+    docker logs brapi2arc
     ```
 
 By following these steps, you should be able to successfully install, set up, and start using the tool to interact with your ARC. Remember to refer to the full [API documentation](api.md) for more detailed information on endpoints and request/response formats.
