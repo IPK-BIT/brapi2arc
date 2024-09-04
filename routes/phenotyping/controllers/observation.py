@@ -1,7 +1,8 @@
 from icecream import ic
 
 from litestar import Controller, post
-from arctrl.arctrl import ArcTable, CompositeHeader, CompositeCell, IOType, XlsxController
+from litestar.datastructures import State
+from arctrl.arctrl import ArcTable, CompositeHeader, CompositeCell, IOType, XlsxController, JsonController
 from fsspreadsheet.xlsx import Xlsx
 from utils import arc
 import datetime
@@ -19,7 +20,7 @@ class ObservationController(Controller):
     path = '/observations'
 
     @post('/')
-    async def post_observations(self, headers: dict, data: list[Observation]) -> Response[Observation]:
+    async def post_observations(self, state: State, headers: dict, data: list[Observation]) -> Response[Observation]:
         token = headers.get('authorization').split(' ')[1]
 
         arc_obj = arc.read('data')
@@ -130,6 +131,10 @@ class ObservationController(Controller):
             for name in dirs:
                 os.rmdir(os.path.join(root, name))
         git.Repo.clone_from(f"{os.getenv('DATAHUB_URL')}{os.getenv('ARC_URI')}", 'data')
+
+        #TODO: Check if this works
+        arc_obj = arc.read('data')
+        state.rocrate = JsonController().ARC().to_rocrate_json_string(arc_obj)
 
         return Response(
             metadata=Metadata(
