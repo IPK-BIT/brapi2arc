@@ -132,9 +132,9 @@ class ObservationController(Controller):
                 os.rmdir(os.path.join(root, name))
         git.Repo.clone_from(f"{os.getenv('DATAHUB_URL')}{os.getenv('ARC_URI')}", 'data')
 
-        #TODO: Check if this works
+        #TODO: Push to repo?
         arc_obj = arc.read('data')
-        state.rocrate = JsonController().ARC().to_rocrate_json_string(arc_obj)
+        state.rocrate = JsonController().ARC().to_rocrate_json_string()(arc_obj)
 
         return Response(
             metadata=Metadata(

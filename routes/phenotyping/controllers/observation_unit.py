@@ -63,7 +63,8 @@ class ObservationUnitController(Controller):
                                     observationUnitDbId=output['name'],
                                     observationUnitName=output['name'],
                                     observationUnitPosition=Position(
-                                        entryType=None,
+                                        entryType=next(
+                                            (prop['value'] for prop in output['additionalProperties'] if prop['category'] == 'ENTRY TYPE'), None),
                                         geoCoordinates=None,
                                         observationLevel=ObservationLevel(
                                             levelName='rep',
@@ -127,10 +128,10 @@ class ObservationUnitController(Controller):
             for i in range(0,growth.RowCount):
                 index_mapping[study.Identifier][growth.GetRow(i)[0].AsFreeText] = i
 
+        #TODO: Group by study and append isa.study only per study
         for observation_unit in data:
             study = arc_obj.ISA.GetStudy(observation_unit.studyDbId)
             growth = study.GetTable('Growth')
-            #TODO: Mapping to query the observation unit from the growth table
             
             i=index_mapping[observation_unit.studyDbId][observation_unit.germplasmDbId]
             row = growth.GetRow(i)
@@ -140,8 +141,10 @@ class ObservationUnitController(Controller):
                         observation_unit.observationUnitDbId = f'{observation_unit.germplasmDbId}-{observation_unit.observationUnitPosition.positionCoordinateX}-{observation_unit.observationUnitPosition.positionCoordinateY}'
                     else:
                         observation_unit.observationUnitDbId = f'{observation_unit.germplasmDbId}-{uuid1()}'
-                    growth.UpdateCellAt(8,i,CompositeCell.free_text(observation_unit.observationUnitDbId))
+                    growth.UpdateCellAt(9,i,CompositeCell.free_text(observation_unit.observationUnitDbId))
                     if observation_unit.observationUnitPosition:
+                        if observation_unit.observationUnitPosition.entryType:
+                            growth.UpdateCellAt(8, i, CompositeCell.term(OntologyAnnotation(observation_unit.observationUnitPosition.entryType,'','')))
                         if observation_unit.observationUnitPosition.positionCoordinateX:
                             growth.UpdateCellAt(7, i, CompositeCell.term(OntologyAnnotation(observation_unit.observationUnitPosition.positionCoordinateX,'','')))
                         if observation_unit.observationUnitPosition.positionCoordinateY:
@@ -149,47 +152,48 @@ class ObservationUnitController(Controller):
                         if observation_unit.observationUnitPosition.observationLevel:
                             growth.UpdateCellAt(5, i, CompositeCell.term(OntologyAnnotation(observation_unit.observationUnitPosition.observationLevel.levelCode,'','')))
                     study.UpdateTable('Growth', growth)
-            spreadsheet = XlsxController().Study().to_fs_workbook(study)
-            Xlsx().to_xlsx_file(
-                f'data/studies/{observation_unit.studyDbId}/isa.study.xlsx', spreadsheet)
-            observation_unit.observations = None
-            written_observation_units.append(observation_unit)
-        arc_obj = arc.read('data/')
-        arc_rocrate = JsonController().ARC().to_rocrate_json_string()(arc_obj)
-        actions.append(
-                {
-                    'action': 'update',
-                    'file_path': f'studies/{observation_unit.studyDbId}/isa.study.xlsx',
-                    'encoding': 'base64',
-                    'content': base64.b64encode(open(f'data/studies/{observation_unit.studyDbId}/isa.study.xlsx', 'rb').read()).decode('utf-8')
-                }
-            )
-        actions.append({
-            'action': 'update',
-            'file_path': 'metadata.json',
-            'encoding': 'text',
-            'content': arc_rocrate
-        })
-        json_payload = {
-            'branch': 'main',
-            'commit_message': f'[brapi2arc] Add observation units - {datetime.datetime.now()}',
-            'actions': actions
-        }
-        response = requests.post(f'{os.getenv("DATAHUB_URL")}api/v4/projects/{os.getenv("ARC_URI").replace("/","%2F")}/repository/commits', headers={
-            'PRIVATE-TOKEN': token
-        }, json=json_payload)
-        response.raise_for_status()
-        
-        for root, dirs, files in os.walk('data', topdown=False):
-            for name in files:
-                os.remove(os.path.join(root, name))
-            for name in dirs:
-                os.rmdir(os.path.join(root, name))
-        git.Repo.clone_from(f"{os.getenv('DATAHUB_URL')}{os.getenv('ARC_URI')}", 'data')
-        metadata_path = 'data/metadata.json'
-        if os.path.exists(metadata_path):
-            with open(metadata_path, 'r') as file:
-                state.rocrate = file.read()
+                    spreadsheet = XlsxController().Study().to_fs_workbook(study)
+                    Xlsx().to_xlsx_file(
+                        f'data/studies/{observation_unit.studyDbId}/isa.study.xlsx', spreadsheet)
+                    observation_unit.observations = None
+                    written_observation_units.append(observation_unit)
+        if len(written_observation_units)>0: 
+            arc_obj = arc.read('data/')
+            arc_rocrate = JsonController().ARC().to_rocrate_json_string()(arc_obj)
+            actions.append(
+                    {
+                        'action': 'update',
+                        'file_path': f'studies/{observation_unit.studyDbId}/isa.study.xlsx',
+                        'encoding': 'base64',
+                        'content': base64.b64encode(open(f'data/studies/{observation_unit.studyDbId}/isa.study.xlsx', 'rb').read()).decode('utf-8')
+                    }
+                )
+            actions.append({
+                'action': 'update',
+                'file_path': 'metadata.json',
+                'encoding': 'text',
+                'content': arc_rocrate
+            })
+            json_payload = {
+                'branch': 'main',
+                'commit_message': f'[brapi2arc] Add observation units - {datetime.datetime.now()}',
+                'actions': actions
+            }
+            response = requests.post(f'{os.getenv("DATAHUB_URL")}api/v4/projects/{os.getenv("ARC_URI").replace("/","%2F")}/repository/commits', headers={
+                'PRIVATE-TOKEN': token
+            }, json=json_payload)
+            response.raise_for_status()
+            
+            for root, dirs, files in os.walk('data', topdown=False):
+                for name in files:
+                    os.remove(os.path.join(root, name))
+                for name in dirs:
+                    os.rmdir(os.path.join(root, name))
+            git.Repo.clone_from(f"{os.getenv('DATAHUB_URL')}{os.getenv('ARC_URI')}", 'data')
+            metadata_path = 'data/metadata.json'
+            if os.path.exists(metadata_path):
+                with open(metadata_path, 'r') as file:
+                    state.rocrate = file.read()
 
         return Response(
             metadata=Metadata(
