@@ -1,0 +1,31 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: BrAPI2ARC
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Manuel
+    family-names: Feser
+    orcid: 'https://orcid.org/0000-0001-6546-1818'
+    email: feser@ipk-gatersleben.de
+    name-particle: Manuel
+    affiliation: IPK Gatersleben
+repository-code: 'https://github.com/IPK-BIT/brapi2arc'
+url: 'https://brapi2arc.rtfd.io/en/latest'
+abstract: >-
+  This API allows researchers to submit phenotyping
+  observations to a dataset stored as an Annotated Research
+  Context (ARC). The ARC provides a standardized structure
+  for capturing and sharing research data, enabling
+  reproducibility and transparency in scientific
+  investigations.
+keywords:
+  - BrAPI
+  - BrAPI Phenotyping
+  - BrAPI Server
+  - RO-Crate
+license: MIT
