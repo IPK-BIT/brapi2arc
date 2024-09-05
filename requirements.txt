@@ -1,4 +1,4 @@
-litestar==2.8.2
+litestar==2.8.3
 uvicorn==0.29.0
 python-dotenv==1.0.1
 pydantic==2.6.4
