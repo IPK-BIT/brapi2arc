@@ -1,4 +1,5 @@
 from icecream import ic
+from datetime import datetime
 
 from litestar import Controller, get, post
 from litestar.datastructures import State
@@ -142,6 +143,7 @@ class ObservationUnitController(Controller):
             column_index = {}
             for i in range(0, len(growth_header)):
                 column_index[str(growth_header[i])] = i
+
             for germplasmDbId, germplasm_group in germplasm_grouped_df:
                 for _, germplasm_row in germplasm_group.iterrows():
                     row = growth.GetRow(germplasm_index[germplasmDbId])
@@ -174,18 +176,17 @@ class ObservationUnitController(Controller):
                     ou.observationUnitName = observationUnitDbId
                     written_observation_units.append(ou)
                     changes = True
+                    
             if changes:
-                included_germplasms = set(new_growth.GetColumn(
-                    0).Cells[i].AsFreeText for i in range(new_growth.RowCount))
+                columnn = new_growth.GetColumn(0)
+                included_germplasms = set(columnn.Cells[i].AsFreeText for i in range(new_growth.RowCount))
                 for key, i in germplasm_index.items():
                     if key not in included_germplasms:
                         new_growth.AddRow(growth.GetRow(i))
-
                 study.UpdateTable('Growth', new_growth)
                 spreadsheet = XlsxController().Study().to_fs_workbook(study)
                 Xlsx().to_xlsx_file(
                     f'data/studies/{studyDbId}/isa.study.xlsx', spreadsheet)
-
                 actions.append(
                     {
                         'action': 'update',

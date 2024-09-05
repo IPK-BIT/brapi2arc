@@ -87,12 +87,15 @@ class ObservationController(Controller):
                     if not os.path.exists(f'data/assays/{studyDbId}/datasets'):
                         os.makedirs(f'data/assays/{studyDbId}/datasets')
                     if not os.path.exists(f'data/assays/{studyDbId}/datasets/phenotyping.csv'):
+                        csv_action = 'create'
                         group.to_csv(
                             f'data/assays/{studyDbId}/datasets/phenotyping.csv', index=False)
                     else:
+                        csv_action = 'update'
                         group.to_csv(
                             f'data/assays/{studyDbId}/datasets/phenotyping.csv', mode='a', header=False, index=False)
-
+                    
+                    #TODO: If POST observations fails, do a git stash to revert the changes.
                     try:
                         assay.UpdateTable('Phenotyping', phenotyping)
                     except:
@@ -102,7 +105,7 @@ class ObservationController(Controller):
                         f'data/assays/{studyDbId}/isa.assay.xlsx', spreadsheet)
                     actions.append(
                         {
-                            'action': 'create',
+                            'action': csv_action,
                             'file_path': f'assays/{studyDbId}/datasets/phenotyping.csv',
                             'encoding': 'base64',
                             'content': base64.b64encode(open(f'data/assays/{studyDbId}/datasets/phenotyping.csv', 'rb').read()).decode('utf-8')
