@@ -12,7 +12,7 @@ This API allows researchers to submit phenotyping observations to a dataset stor
 The brapi2arc tool is offered as a docker container. To install it start a new container with the environment variables `ARC_URI`, `DATAHUB_URL` and `DATAHUB_TOKEN` set.
 
 ```sh
-docker run -e ARC_URI=<ARC_URI_VALUE> -e DATAHUB_URL=<DATAHUB_URL_VALUE> -e DATAHUB_TOKEN=<DATAHUB_TOKEN_VALUE> -p 8000:8000 brapi2arc
+docker run -e ARC_URI=<ARC_URI_VALUE> -e DATAHUB_URL=<DATAHUB_URL_VALUE> -e DATAHUB_TOKEN=<DATAHUB_TOKEN_VALUE> -p 8000:8000 ghcr.io/ipk-bit/brapi2arc
 ```
 
 Or using docker compose.
@@ -20,7 +20,7 @@ Or using docker compose.
 ```yml
 services:
   brapi2arc:
-    image: brapi2arc
+    image: ghcr.io/ipk-bit/brapi2arc
     ports:
       - 8000:8000
     environment:
