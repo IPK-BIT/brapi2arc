@@ -94,8 +94,8 @@ class ObservationController(Controller):
                         csv_action = 'update'
                         group.to_csv(
                             f'data/assays/{studyDbId}/datasets/phenotyping.csv', mode='a', header=False, index=False)
-                    
-                    #TODO: If POST observations fails, do a git stash to revert the changes.
+
+                    # TODO: If POST observations fails, do a git stash to revert the changes.
                     try:
                         assay.UpdateTable('Phenotyping', phenotyping)
                     except:

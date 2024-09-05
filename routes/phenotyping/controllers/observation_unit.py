@@ -176,10 +176,11 @@ class ObservationUnitController(Controller):
                     ou.observationUnitName = observationUnitDbId
                     written_observation_units.append(ou)
                     changes = True
-                    
+
             if changes:
                 columnn = new_growth.GetColumn(0)
-                included_germplasms = set(columnn.Cells[i].AsFreeText for i in range(new_growth.RowCount))
+                included_germplasms = set(
+                    columnn.Cells[i].AsFreeText for i in range(new_growth.RowCount))
                 for key, i in germplasm_index.items():
                     if key not in included_germplasms:
                         new_growth.AddRow(growth.GetRow(i))
